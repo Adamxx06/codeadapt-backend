@@ -4,31 +4,54 @@ header("Content-Type: application/json");
 require_once __DIR__ . "/db.php";
 
 $data = json_decode(file_get_contents("php://input"), true);
-if (!$data || !isset($data['question_id'], $data['selected'], $data['quiz_id'], $data['user_id'])) {
-    echo json_encode(["error" => "Invalid payload"]);
+
+if (!$data || !isset($data['topic_id'], $data['answers'], $data['user_id'])) {
+    echo json_encode(["success" => false, "error" => "Invalid payload"]);
     exit;
 }
 
-$question_id = intval($data['question_id']);
-$selected    = $data['selected'];
-$quiz_id     = intval($data['quiz_id']);
-$user_id     = intval($data['user_id'] ?? 0);
+$topic_id = intval($data['topic_id']);
+$answers  = $data['answers']; // { question_id: selected_option, ... }
+$user_id  = intval($data['user_id']);
 
-// Check correctness
-$sql = "SELECT correct_option FROM quiz_questions WHERE id = ? LIMIT 1";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $question_id);
-$stmt->execute();
-$res = $stmt->get_result();
-$row = $res->fetch_assoc();
-$correct = ($row['correct_option'] === $selected) ? 1 : 0;
+if (empty($answers)) {
+    echo json_encode(["success" => false, "error" => "No answers submitted"]);
+    exit;
+}
 
-// Record in user_progress
-$sqlInsert = "INSERT INTO user_progress (user_id, quiz_id, question_id, selected_option, is_correct, created_at)
-              VALUES (?, ?, ?, ?, ?, NOW())";
-$stmtInsert = $conn->prepare($sqlInsert);
-$stmtInsert->bind_param("iiisi", $user_id, $quiz_id, $question_id, $selected, $correct);
-$stmtInsert->execute();
+$score = 0;
 
-echo json_encode(["correct" => $correct]);
-?>
+try {
+    foreach ($answers as $question_id => $selected) {
+        $question_id = intval($question_id);
+
+        // Fetch question details including correct answer & difficulty
+        $stmt = $conn->prepare("SELECT correct_answer, quiz_id, difficulty FROM quiz_questions WHERE id = ? LIMIT 1");
+        $stmt->execute([$question_id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) continue;
+
+        $is_correct = ($row['correct_answer'] === $selected) ? 1 : 0;
+        $score += $is_correct;
+        $quiz_id = $row['quiz_id'];
+        $difficulty = $row['difficulty'] ?? 'easy';
+
+        // Insert/update user progress with difficulty
+        $stmtInsert = $conn->prepare("
+            INSERT INTO user_progress 
+            (user_id, quiz_id, question_id, selected_option, is_correct, difficulty, created_at) 
+            VALUES (?, ?, ?, ?, ?, ?, NOW())
+        ");
+        $stmtInsert->execute([$user_id, $quiz_id, $question_id, $selected, $is_correct, $difficulty]);
+    }
+
+    echo json_encode([
+        "success" => true,
+        "score" => $score,
+        "total" => count($answers)
+    ]);
+
+} catch (Exception $e) {
+    echo json_encode(["success" => false, "error" => $e->getMessage()]);
+}
