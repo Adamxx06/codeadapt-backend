@@ -16,7 +16,7 @@ if ($courseId <= 0) {
 
 try {
     // Fetch topics for the given course
-    $stmt = $conn->prepare("SELECT id, title FROM topics WHERE course_id = ? ORDER BY order_no ASC");
+    $stmt = $conn->prepare("SELECT id, title FROM topics WHERE course_id = ? ORDER BY created_at ASC");
     $stmt->execute([$courseId]);
 
     $topics = $stmt->fetchAll(PDO::FETCH_ASSOC);
