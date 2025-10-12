@@ -11,7 +11,7 @@ if (!$data || !isset($data['topic_id'], $data['answers'], $data['user_id'])) {
 }
 
 $topic_id = intval($data['topic_id']);
-$answers  = $data['answers']; // { question_id: selected_option, ... }
+$answers  = $data['answers']; 
 $user_id  = intval($data['user_id']);
 
 if (empty($answers)) {

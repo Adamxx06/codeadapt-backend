@@ -15,7 +15,6 @@ $difficultyMap = ['easy' => 1, 'medium' => 2, 'hard' => 3];
 $minDifficultyKey = $_GET['difficulty'] ?? 'easy';
 $minDifficulty = $difficultyMap[$minDifficultyKey] ?? 1;
 
-// Optional: exclude previously answered question IDs
 $excludeIds = isset($_GET['exclude_ids']) ? array_map('intval', explode(',', $_GET['exclude_ids'])) : [];
 
 try {
