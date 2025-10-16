@@ -4,7 +4,7 @@ header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json");
 
-require __DIR__ . "/db.php";
+require __DIR__ . "/db.php"; // uses $pdo from db.php
 
 $courseId = isset($_GET['course_id']) ? intval($_GET['course_id']) : 0;
 
@@ -14,10 +14,9 @@ if ($courseId <= 0) {
 }
 
 try {
-    // Fetch topics for the given course
-    $stmt = $conn->prepare("SELECT id, title FROM topics WHERE course_id = ? ORDER BY created_at ASC");
+    // Prepare and execute with PDO
+    $stmt = $pdo->prepare("SELECT id, title, content, code_snippet FROM topics WHERE course_id = ? ORDER BY created_at ASC");
     $stmt->execute([$courseId]);
-
     $topics = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode([
@@ -30,3 +29,4 @@ try {
         "error" => $e->getMessage()
     ]);
 }
+?>

@@ -19,7 +19,7 @@ $excludeIds = isset($_GET['exclude_ids']) ? array_map('intval', explode(',', $_G
 
 try {
     // Fetch quiz for the topic
-    $stmt = $conn->prepare("SELECT * FROM quizzes WHERE topic_id = ?");
+    $stmt = $pdo->prepare("SELECT * FROM quizzes WHERE topic_id = ?");
     $stmt->execute([$topicId]);
     $quiz = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -29,7 +29,8 @@ try {
     }
 
     // Build dynamic query for adaptive questions
-    $query = "SELECT * FROM quiz_questions WHERE quiz_id = ? AND difficulty >= ?";
+    $query = "SELECT id, question, options, correct_answer, explanation, points, difficulty 
+              FROM quiz_questions WHERE quiz_id = ? AND difficulty >= ?";
     $params = [$quiz['id'], $minDifficulty];
 
     if (!empty($excludeIds)) {
@@ -38,11 +39,10 @@ try {
         $params = array_merge($params, $excludeIds);
     }
 
-    $stmtQ = $conn->prepare($query);
+    $stmtQ = $pdo->prepare($query);
     $stmtQ->execute($params);
     $questions = $stmtQ->fetchAll(PDO::FETCH_ASSOC);
 
-    // Decode options JSON for each question
     foreach ($questions as &$q) {
         $q['options'] = json_decode($q['options'], true) ?: [];
     }
@@ -50,6 +50,7 @@ try {
     $quiz['questions'] = $questions;
 
     echo json_encode(["success" => true, "data" => $quiz]);
+
 } catch (Exception $e) {
     echo json_encode(["success" => false, "error" => $e->getMessage()]);
 }
